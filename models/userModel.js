@@ -4,15 +4,15 @@ const userSchema = mongoose.Schema(
   {
     name: {
       name: String,
-      required: true,
+      required: Boolean,
     },
     email: {
       email: String,
-      required: true,
+      required: Boolean,
     },
     password: {
       password: String,
-      required: true,
+      required: Boolean,
     },
   },
   {
