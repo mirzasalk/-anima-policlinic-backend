@@ -1,28 +1,29 @@
 const mongoose = require("mongoose");
 
-const userSchema = mongoose.Schema(
+const userSchema = new mongoose.Schema( //OVAKO SE PRAVI SEMA PO KOJOJ SE FORMIRAJU KORISNICI
   {
-    name: {
-      name: String,
-      required: Boolean,
+    firstName: {
+      type: String,
+      required: true,
     },
-    lastname: {
-      name: String,
-      required: Boolean,
+    lastName: {
+      type: String,
+      required: true,
     },
     email: {
-      email: String,
-      required: Boolean,
+      type: String,
+      required: true,
     },
     password: {
-      password: String,
-      required: Boolean,
+      type: String,
+      required: true,
     },
   },
   {
-    timestamps: true,
+    timestamps: true, //ZA DOBIJANJE REALNOG VREMENA FORMIRANJA KORISNIKA
   }
 );
-const userModel = mongoose.model("users", userSchema);
+
+const userModel = mongoose.model("user", userSchema);
 
 module.exports = userModel;
