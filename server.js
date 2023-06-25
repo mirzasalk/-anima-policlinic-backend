@@ -1,9 +1,17 @@
 const express = require("express");
 const app = express();
+const userRoute = require("./routes/userRoute");
+const connectDatabase = require("./config/dbConfig");
+const cors = require("cors");
 require("dotenv").config();
-const dbConfig = require("./config/dbConfig");
-const port = process.env.PORT || 5000;
+app.use(express.json());
+app.use(cors());
+connectDatabase();
 
-app.listen(port, () => {
-  console.log(`Express server listening on ${port}`);
+app.use("/api/user", userRoute);
+
+const PORT = process.env.PORT || 5000;
+console.log(process.env.MONGO_URL);
+app.listen(PORT, () => {
+  console.log(`Express servers listening on port ${PORT}`);
 });
