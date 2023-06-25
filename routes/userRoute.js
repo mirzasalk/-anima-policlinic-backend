@@ -78,11 +78,13 @@ router.post("/get-user-info-by-id", authMiddlewea, async (req, res) => {
         .send({ massage: "Korisnik ne postoji", success: false });
     } else {
       res.status(200).send({
-        sucess: true,
+        success: true,
         data: {
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
+          isDoctor: user.isDoctor,
+          isAdmin: user.isAdmin,
         },
       });
     }
