@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const User = require("../models/userModel");
+const Doctor = require("../models/doctorModel");
+const Therapy = require("../models/therapyModel");
+const Apointment = require("../models/apointmentModel");
 const jwt = require("jsonwebtoken");
 const authMiddlewea = require("../midlewares/authMiddleweare");
 
@@ -53,7 +56,7 @@ router.post("/login", async (req, res) => {
         });
       } else {
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-          expiresIn: "2d",
+          expiresIn: "1d",
         });
         res.status(200).send({
           massage: "Uspesno izvrsena prijava",
@@ -69,9 +72,34 @@ router.post("/login", async (req, res) => {
       .send({ massage: "Greska pri logovanju", success: false, error });
   }
 });
+
+router.post("/get-doctor-info-by-id", async (req, res) => {
+  try {
+    const doctor = await Doctor.findOne({ _id: req.body.userId });
+
+    if (!doctor) {
+      return res
+        .status(200)
+        .send({ massage: "Doktor ne postoji", success: false });
+    } else {
+      res.status(200).send({
+        success: true,
+        data: doctor,
+      });
+    }
+  } catch (error) {
+    return res.status(500).send({
+      massage: `Greska pri pribavljanju konirsnickih informacija ${req.body.userId}`,
+      success: false,
+      error,
+    });
+  }
+});
+
 router.post("/get-user-info-by-id", authMiddlewea, async (req, res) => {
   try {
     const user = await User.findOne({ _id: req.body.userId });
+
     if (!user) {
       return res
         .status(200)
@@ -80,17 +108,273 @@ router.post("/get-user-info-by-id", authMiddlewea, async (req, res) => {
       res.status(200).send({
         success: true,
         data: {
+          id: user._id,
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
           isDoctor: user.isDoctor,
           isAdmin: user.isAdmin,
+          unseenNotifications: user.unseenNotifications,
         },
       });
     }
   } catch (error) {
     return res.status(500).send({
       massage: "Greska pri pribavljanju konirsnickih informacija",
+      success: false,
+      error,
+    });
+  }
+});
+
+router.post("/doctor-apply", authMiddlewea, async (req, res) => {
+  try {
+    const newDoctor = new Doctor({ ...req.body, status: "pending" });
+    await newDoctor.save();
+    const adminUser = await User.findOne({ isAdmin: true });
+    const unseenNotifications = adminUser.unseenNotifications;
+    unseenNotifications.push({
+      type: "new-doctor-request",
+      message: `${newDoctor.firstName} ${newDoctor.lastName} je aplicirao za posao`,
+      data: {
+        doctorId: newDoctor._id,
+        userId: newDoctor.userId,
+        name: newDoctor.firstName + " " + newDoctor.lastName,
+      },
+      onClickPath: "doktori",
+    });
+    await User.findByIdAndUpdate(adminUser._id, { unseenNotifications });
+    res
+      .status(200)
+      .send({ success: true, message: "Uspesno ste aplicirali za posao" });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .send({ messaga: "Greska pri apliciranju", success: false, error });
+  }
+});
+
+router.post("/apointment-apply", authMiddlewea, async (req, res) => {
+  try {
+    const newApointment = new Apointment({
+      ...req.body,
+      status: "pending",
+    });
+    await newApointment.save();
+
+    res
+      .status(200)
+      .send({ success: true, message: "Uspesno ste aplicirali za termin" });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .send({ messaga: "Greska pri apliciranju", success: false, error });
+  }
+});
+
+router.get("/get-users", authMiddlewea, async (req, res) => {
+  try {
+    const users = await User.find({});
+    if (!users) {
+      return res
+        .status(200)
+        .send({ massage: "Ne postoji ni jeda korisnik", success: false });
+    } else {
+      res.status(200).send({
+        success: true,
+        data: users,
+      });
+    }
+  } catch (error) {
+    return res.status(500).send({
+      massage: `Greska pri pribavljanju konirsnickih informacija `,
+      success: false,
+      error,
+    });
+  }
+});
+
+router.get("/get-doctors", authMiddlewea, async (req, res) => {
+  try {
+    const doctors = await Doctor.find({});
+    if (!doctors) {
+      return res
+        .status(200)
+        .send({ massage: "Ne postoji ni jedan korisnik", success: false });
+    } else {
+      res.status(200).send({
+        success: true,
+        data: doctors,
+      });
+    }
+  } catch (error) {
+    return res.status(500).send({
+      massage: `Greska pri pribavljanju konirsnickih informacija `,
+      success: false,
+      error,
+    });
+  }
+});
+
+router.get("/get-therapys", authMiddlewea, async (req, res) => {
+  try {
+    const therapys = await Therapy.find({});
+    if (!therapys) {
+      return res
+        .status(200)
+        .send({ massage: "Ne postoji ni jedna terapija", success: false });
+    } else {
+      res.status(200).send({
+        success: true,
+        data: therapys,
+      });
+    }
+  } catch (error) {
+    return res.status(500).send({
+      massage: `Greska pri pribavljanju liste terapijama `,
+      success: false,
+      error,
+    });
+  }
+});
+
+router.post("/check-availability", authMiddlewea, async (req, res) => {
+  const doctorId = req.body.doctorId;
+  const date = req.body.date;
+
+  try {
+    const apointment = await Apointment.find({
+      date,
+      doctorId,
+    });
+    let temp = false;
+    let vremePoslatogZahteva = req.body.timings[0] * 60 + req.body.timings[1];
+    let DokotorStartTime =
+      req.body.doctorTimings[0][0] * 60 + req.body.doctorTimings[0][1];
+    let doctorEndTime =
+      req.body.doctorTimings[1][0] * 60 + req.body.doctorTimings[1][1];
+    let checkDoctorTime = false;
+    if (
+      vremePoslatogZahteva >= DokotorStartTime &&
+      vremePoslatogZahteva <= doctorEndTime - 30
+    ) {
+      checkDoctorTime = true;
+    }
+    console.log(apointment);
+    if (apointment.length === 0) {
+      console.log("usao");
+      if (checkDoctorTime) {
+        temp = true;
+      }
+    } else {
+      apointment.map((item, index) => {
+        let vremeZahtevaKojiSeObradjuje =
+          item.timings[0] * 60 + item.timings[1];
+        vremePoslatogZahteva - 30 >= vremeZahtevaKojiSeObradjuje &&
+        checkDoctorTime
+          ? (temp = true)
+          : vremePoslatogZahteva + 30 <= vremeZahtevaKojiSeObradjuje &&
+            checkDoctorTime
+          ? (temp = true)
+          : (temp = false);
+      });
+    }
+
+    // if (apointment.length === 0 && checkDoctorTime) {
+    //   temp === true;
+    // } else {
+    //   if (
+    //     (vremePoslatogZahteva - 30 >= vremeZahtevaKojiSeObradjuje ||
+    //       vremePoslatogZahteva + 30 <= vremeZahtevaKojiSeObradjuje) &&
+    //
+    //   ) {
+    //     temp = true;
+    //   } else {
+    //     temp = false;
+    //   }
+    // }
+
+    if (temp === true) {
+      return res.status(200).send({
+        message: "Termin je slobodan",
+        success: true,
+      });
+    } else {
+      res.status(200).send({
+        message: "Termin nije slobodan",
+        success: false,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .send({ messaga: "Greska pri proveri", success: false, error });
+  }
+});
+
+router.post("/get-apointments", authMiddlewea, async (req, res) => {
+  try {
+    console.log(req.body);
+    const apointment = await Apointment.find({ userId: req.body.userId });
+    console.log(apointment);
+    if (!apointment) {
+      return res
+        .status(200)
+        .send({ massage: "Ne postoji ni jeda termin", success: false });
+    } else {
+      res.status(200).send({
+        success: true,
+        data: apointment,
+      });
+    }
+  } catch (error) {
+    return res.status(500).send({
+      massage: `Greska pri pribavljanju  informacija o terminima `,
+      success: false,
+      error,
+    });
+  }
+});
+router.get("/get-doctors-for-unsigned-user", async (req, res) => {
+  try {
+    const doctors = await Doctor.find({});
+    if (!doctors) {
+      return res
+        .status(200)
+        .send({ massage: "Ne postoji ni jedan korisnik", success: false });
+    } else {
+      res.status(200).send({
+        success: true,
+        data: doctors,
+      });
+    }
+  } catch (error) {
+    return res.status(500).send({
+      massage: `Greska pri pribavljanju konirsnickih informacija `,
+      success: false,
+      error,
+    });
+  }
+});
+router.get("/get-therapies-gor-unsigned-user", async (req, res) => {
+  try {
+    const therapys = await Therapy.find({});
+    if (!therapys) {
+      return res
+        .status(200)
+        .send({ massage: "Ne postoji ni jedna terapija", success: false });
+    } else {
+      res.status(200).send({
+        success: true,
+        data: therapys,
+      });
+    }
+  } catch (error) {
+    return res.status(500).send({
+      massage: `Greska pri pribavljanju liste terapijama `,
       success: false,
       error,
     });

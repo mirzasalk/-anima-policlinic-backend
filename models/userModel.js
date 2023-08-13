@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema( //OVAKO SE PRAVI SEMA PO KOJOJ SE FORMIRAJU KORISNICI
+const userSchema = new mongoose.Schema(
   {
     firstName: {
       type: String,
@@ -32,6 +32,10 @@ const userSchema = new mongoose.Schema( //OVAKO SE PRAVI SEMA PO KOJOJ SE FORMIR
       default: [],
     },
     unseenNotifications: {
+      type: Array,
+      default: [],
+    },
+    appointments: {
       type: Array,
       default: [],
     },
