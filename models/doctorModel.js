@@ -59,6 +59,10 @@ const userSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
+    img: {
+      type: String,
+      default: "dr3.png",
+    },
   },
   {
     timestamps: true, //ZA DOBIJANJE REALNOG VREMENA FORMIRANJA KORISNIKA
