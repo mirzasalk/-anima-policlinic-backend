@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const User = require("../models/userModel");
+
 const Doctor = require("../models/doctorModel");
 const Therapy = require("../models/therapyModel");
 const Apointment = require("../models/apointmentModel");
@@ -11,6 +12,11 @@ const { cloudinary } = require("../utils/cloudinary");
 const sendEmail = require("../utils/sendEmail");
 
 router.post("/register", async (req, res) => {
+  function base64UrlEncode(str) {
+    let base64 = btoa(str); // Kodiranje u Base64
+    base64 = base64.replace("+", "-").replace("/", "_").replace(/=+$/, ""); // Zamena znakova za URL kompatibilnost
+    return base64;
+  }
   try {
     const userExists = await User.findOne({ email: req.body.email });
     if (userExists) {
@@ -26,8 +32,12 @@ router.post("/register", async (req, res) => {
 
       const newUser = new User(req.body);
       await newUser.save();
-      const url = `${process.env.BASE_URL}/user/${newUser._id}`;
-      console.log(newUser.email);
+      const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+        algorithm: "HS256",
+      });
+      const encodedToken = base64UrlEncode(token);
+      const url = `${process.env.BASE_URL}/user/${newUser._id}/verify/${encodedToken}`;
 
       await sendEmail(newUser.email, "Verify Email", url);
 
@@ -396,14 +406,49 @@ router.get("/get-therapies-gor-unsigned-user", async (req, res) => {
   }
 });
 
-router.get("/:id", authMiddlewea, async (req, res) => {
-  const user = await findOne({ _id: req.params.id });
+router.get("/:id/verify/:token", async (req, res) => {
+  let valid = true;
+  function base64UrlDecode(base64Url) {
+    let base64 = base64Url.replace("-", "+").replace("_", "/");
+
+    while (base64.length % 4 !== 0) {
+      base64 += "=";
+    }
+
+    return atob(base64); // Dekodiranje Base64
+  }
+
+  const user = await User.findOne({ _id: req.params.id });
+
   if (!user) {
-    return res.status(400).send({ message: "invalid link" });
+    valid = false;
+    console.log(valid);
+  }
+  const token = req.params.token;
+  const base64Token = base64UrlDecode(token);
+
+  jwt.verify(base64Token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      valid = false;
+      console.log("nije validan token");
+    }
+  });
+  if (!valid) {
+    try {
+      const deletedUser = await User.findByIdAndRemove({
+        _id: req.params.id,
+      });
+    } catch (error) {
+      console.log(error);
+    }
+    return res.status(400).send({ message: "invalid link", success: false });
   }
   let verified = user.verified;
-
+  verified = true;
   await User.findByIdAndUpdate(user._id, { verified });
+  res
+    .status(200)
+    .send({ message: "Uspesno verifikovana email adresa", success: true });
 });
 
 module.exports = router;

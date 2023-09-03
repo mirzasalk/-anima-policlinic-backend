@@ -417,6 +417,7 @@ router.post("/upload-admin-img", authMiddlewea, async (req, res) => {
     });
   }
 });
+
 router.post("/upload-therapy-img", authMiddlewea, async (req, res) => {
   try {
     const therapy = await Therapy.findOne({ _id: req.body.therapyId });
@@ -446,6 +447,7 @@ router.post("/upload-therapy-img", authMiddlewea, async (req, res) => {
     });
   }
 });
+
 router.post("/upload-doctor-img", authMiddlewea, async (req, res) => {
   try {
     const doctor = await Doctor.findOne({ _id: req.body.doctorId });
