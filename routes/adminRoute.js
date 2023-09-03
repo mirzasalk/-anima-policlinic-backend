@@ -6,6 +6,7 @@ const Doctor = require("../models/doctorModel");
 const Therapy = require("../models/therapyModel");
 const jwt = require("jsonwebtoken");
 const authMiddlewea = require("../midlewares/authMiddleweare");
+const { cloudinary } = require("../utils/cloudinary");
 
 router.post("/approve-doctor-status", authMiddlewea, async (req, res) => {
   try {
@@ -37,7 +38,7 @@ router.post("/approve-doctor-status", authMiddlewea, async (req, res) => {
 router.post("/reject-doctor-status", authMiddlewea, async (req, res) => {
   try {
     const doctor = await Doctor.findOne({ _id: req.body.doctorId });
-    doctor.status = "reject";
+    doctor.status = "rejected";
     await doctor.save();
 
     const admin = await User.findOne({ isAdmin: true });
@@ -61,6 +62,12 @@ router.post("/reject-doctor-status", authMiddlewea, async (req, res) => {
 
 router.post("/add-new-therapy", authMiddlewea, async (req, res) => {
   try {
+    console.log(req.body);
+    const file = req.body.img;
+    const uploadedResponse = await cloudinary.uploader.upload(file);
+
+    req.body.img = uploadedResponse.public_id;
+    console.log(req.body);
     const newTherapy = new Therapy(req.body);
     await newTherapy.save();
     res.status(200).send({
@@ -107,7 +114,14 @@ router.post("/delete-therapy", authMiddlewea, async (req, res) => {
     const deletedTherapy = await Therapy.findByIdAndRemove({
       _id: req.body._id,
     });
-
+    cloudinary.uploader.destroy(deletedTherapy.img, (error, result) => {
+      if (error) {
+        console.error("Greska pri brisanju:", error);
+      } else {
+        console.log("Slika je izbrisana sa clouda:", result);
+      }
+    });
+    console.log(deletedTherapy);
     if (!deletedTherapy) {
       return res.status(404).json({
         success: false,
@@ -159,6 +173,13 @@ router.post("/delete-doctor", authMiddlewea, async (req, res) => {
     console.log(req.body);
     const deletedDoctor = await Doctor.findByIdAndRemove({
       _id: req.body._id,
+    });
+    cloudinary.uploader.destroy(deletedDoctor.img, (error, result) => {
+      if (error) {
+        console.error("Greska pri brisanju:", error);
+      } else {
+        console.log("Slika je izbrisana sa clouda:", result);
+      }
     });
     const user = await User.findOne({ _id: req.body.uId });
     let isDoctor = user.isDoctor;
@@ -315,6 +336,142 @@ router.post("/get-doctor-info-by-user-id", async (req, res) => {
       massage: `Greska pri pribavljanju konirsnickih informacija ${req.body.userId}`,
       success: false,
       error,
+    });
+  }
+});
+
+router.post("/create-new-doctor", authMiddlewea, async (req, res) => {
+  try {
+    const file = req.body.img;
+    const uploadedResponse = await cloudinary.uploader.upload(file);
+    req.body.img = uploadedResponse.public_id;
+    const userExists = await User.findOne({ email: req.body.email });
+    if (userExists) {
+      req.body._userId = userExists._id;
+    } else {
+      const password = req.body.password;
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync(password, salt);
+      req.body.password = hash;
+      userBody = {
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        password: req.body.password,
+        isDoctor: true,
+      };
+      const newUser = new User(userBody);
+      await newUser.save();
+      req.body.userId = newUser._id;
+    }
+    const doctorExists = await Doctor.findOne({ email: req.body.email });
+    if (doctorExists) {
+      res.status(200).send({
+        message: "Doktor sa navedenom email adresom vec postoji",
+        success: false,
+      });
+    } else {
+      const newDoctor = new Doctor({ ...req.body, status: "approved" });
+      await newDoctor.save();
+
+      res.status(200).send({
+        success: true,
+        message: "Uspesno ste kreirali nalog za doktora",
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .send({ messaga: "Greska pri apliciranju", success: false, error });
+  }
+});
+
+router.post("/upload-admin-img", authMiddlewea, async (req, res) => {
+  try {
+    const user = await User.findOne({ isAdmin: true });
+    console.log(user);
+    cloudinary.uploader.destroy(user.img, (error, result) => {
+      if (error) {
+        console.error("Greska pri brisanju:", error);
+      } else {
+        console.log("Slika je izbrisana sa clouda:", result);
+      }
+    });
+    let img = user.img;
+
+    const file = req.body.imgUrl;
+    const uploadedResponse = await cloudinary.uploader.upload(file);
+    console.log(file);
+    img = uploadedResponse.public_id;
+    await User.findByIdAndUpdate(user._id, { img });
+    res.status(200).send({
+      message: "uspesno ste prmenili sliku",
+      success: true,
+    });
+  } catch (error) {
+    console.log(error);
+    res.send({
+      message: "Greska u sistemu poskusajte kasnije",
+      success: false,
+    });
+  }
+});
+router.post("/upload-therapy-img", authMiddlewea, async (req, res) => {
+  try {
+    const therapy = await Therapy.findOne({ _id: req.body.therapyId });
+    cloudinary.uploader.destroy(therapy.img, (error, result) => {
+      if (error) {
+        console.error("Greska pri brisanju:", error);
+      } else {
+        console.log("Slika je izbrisana sa clouda:", result);
+      }
+    });
+    console.log(therapy);
+    let img = therapy.img;
+    const file = req.body.imgUrl;
+    const uploadedResponse = await cloudinary.uploader.upload(file);
+
+    img = uploadedResponse.public_id;
+    await Therapy.findByIdAndUpdate(req.body.therapyId, { img });
+    res.status(200).send({
+      message: "uspesno ste prmenili sliku",
+      success: true,
+    });
+  } catch (error) {
+    console.log(error);
+    res.send({
+      message: "Greska u sistemu poskusajte kasnije",
+      success: false,
+    });
+  }
+});
+router.post("/upload-doctor-img", authMiddlewea, async (req, res) => {
+  try {
+    const doctor = await Doctor.findOne({ _id: req.body.doctorId });
+    cloudinary.uploader.destroy(doctor.img, (error, result) => {
+      if (error) {
+        console.error("Greska pri brisanju:", error);
+      } else {
+        console.log("Slika je izbrisana sa clouda:", result);
+      }
+    });
+    let img = doctor.img;
+
+    const file = req.body.imgUrl;
+    const uploadedResponse = await cloudinary.uploader.upload(file);
+    console.log(uploadedResponse);
+    img = uploadedResponse.public_id;
+    await Doctor.findByIdAndUpdate(req.body.doctorId, { img });
+    res.status(200).send({
+      message: "uspesno ste prmenili sliku",
+      success: true,
+    });
+  } catch (error) {
+    console.log(error);
+    res.send({
+      message: "Greska u sistemu poskusajte kasnije",
+      success: false,
     });
   }
 });

@@ -7,6 +7,8 @@ const Therapy = require("../models/therapyModel");
 const Apointment = require("../models/apointmentModel");
 const jwt = require("jsonwebtoken");
 const authMiddlewea = require("../midlewares/authMiddleweare");
+const { cloudinary } = require("../utils/cloudinary");
+const sendEmail = require("../utils/sendEmail");
 
 router.post("/register", async (req, res) => {
   try {
@@ -24,6 +26,11 @@ router.post("/register", async (req, res) => {
 
       const newUser = new User(req.body);
       await newUser.save();
+      const url = `${process.env.BASE_URL}/user/${newUser._id}`;
+      console.log(newUser.email);
+
+      await sendEmail(newUser.email, "Verify Email", url);
+
       res.status(200).send({
         massage: "Nalog je uspesno kreiran",
         success: true,
@@ -98,6 +105,7 @@ router.post("/get-doctor-info-by-id", async (req, res) => {
 
 router.post("/get-user-info-by-id", authMiddlewea, async (req, res) => {
   try {
+    console.log(req.body);
     const user = await User.findOne({ _id: req.body.userId });
 
     if (!user) {
@@ -115,6 +123,8 @@ router.post("/get-user-info-by-id", authMiddlewea, async (req, res) => {
           isDoctor: user.isDoctor,
           isAdmin: user.isAdmin,
           unseenNotifications: user.unseenNotifications,
+          img: user.img,
+          verified: user.verified,
         },
       });
     }
@@ -129,6 +139,9 @@ router.post("/get-user-info-by-id", authMiddlewea, async (req, res) => {
 
 router.post("/doctor-apply", authMiddlewea, async (req, res) => {
   try {
+    const file = req.body.img;
+    const uploadedResponse = await cloudinary.uploader.upload(file);
+    req.body.img = uploadedResponse.public_id;
     const newDoctor = new Doctor({ ...req.body, status: "pending" });
     await newDoctor.save();
     const adminUser = await User.findOne({ isAdmin: true });
@@ -338,6 +351,7 @@ router.post("/get-apointments", authMiddlewea, async (req, res) => {
     });
   }
 });
+
 router.get("/get-doctors-for-unsigned-user", async (req, res) => {
   try {
     const doctors = await Doctor.find({});
@@ -359,6 +373,7 @@ router.get("/get-doctors-for-unsigned-user", async (req, res) => {
     });
   }
 });
+
 router.get("/get-therapies-gor-unsigned-user", async (req, res) => {
   try {
     const therapys = await Therapy.find({});
@@ -379,6 +394,16 @@ router.get("/get-therapies-gor-unsigned-user", async (req, res) => {
       error,
     });
   }
+});
+
+router.get("/:id", authMiddlewea, async (req, res) => {
+  const user = await findOne({ _id: req.params.id });
+  if (!user) {
+    return res.status(400).send({ message: "invalid link" });
+  }
+  let verified = user.verified;
+
+  await User.findByIdAndUpdate(user._id, { verified });
 });
 
 module.exports = router;

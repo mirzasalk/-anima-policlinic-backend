@@ -51,6 +51,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "pending",
     },
+    archived: {
+      type: String,
+      default: "false",
+    },
     pendinAppointments: {
       type: Array,
       default: [],
@@ -61,7 +65,7 @@ const userSchema = new mongoose.Schema(
     },
     img: {
       type: String,
-      default: "dr3.png",
+      required: true,
     },
   },
   {

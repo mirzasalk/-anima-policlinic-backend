@@ -4,6 +4,7 @@ const User = require("../models/userModel");
 const Doctor = require("../models/doctorModel");
 const Apointment = require("../models/apointmentModel");
 const authMiddlewea = require("../midlewares/authMiddleweare");
+const { cloudinary } = require("../utils/cloudinary");
 
 router.post("/change-presonaldoctor-info", authMiddlewea, async (req, res) => {
   try {
@@ -178,6 +179,37 @@ router.post("/reject-apointments", authMiddlewea, async (req, res) => {
   }
 });
 
+router.post("/upload-doctor-img", authMiddlewea, async (req, res) => {
+  try {
+    console.log(req.body);
+    const doctor = await Doctor.findOne({ _id: req.body._id });
+    console.log(doctor);
+    cloudinary.uploader.destroy(doctor.img, (error, result) => {
+      if (error) {
+        console.error("Greska pri brisanju:", error);
+      } else {
+        console.log("Slika je izbrisana sa clouda:", result);
+      }
+    });
+    let img = doctor.img;
+
+    const file = req.body.imgUrl;
+    const uploadedResponse = await cloudinary.uploader.upload(file);
+    console.log(file);
+    img = uploadedResponse.public_id;
+    await Doctor.findByIdAndUpdate(doctor._id, { img });
+    res.status(200).send({
+      message: "uspesno ste prmenili sliku",
+      success: true,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Došlo je do greške prilikom menjanja slike.",
+      error: error.message,
+    });
+  }
+});
 router.post("/delete-apointment", authMiddlewea, async (req, res) => {
   try {
     const deletedApointment = await Apointment.findOneAndRemove({
