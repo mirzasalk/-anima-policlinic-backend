@@ -266,13 +266,38 @@ router.get("/get-therapys", authMiddlewea, async (req, res) => {
 router.post("/check-availability", authMiddlewea, async (req, res) => {
   const doctorId = req.body.doctorId;
   const date = req.body.date;
+  const curDate = new Date();
+  let text = curDate.toISOString();
+  const godina = text.slice(0, 4);
+  const mesec = text.slice(5, 7);
+  const dan = text.slice(8, 10);
+  let temp = false;
+  let dateTemp = false;
+
+  if (
+    Number(godina) <= date[2] &&
+    Number(mesec) <= date[1] &&
+    Number(dan) <= date[0]
+  ) {
+    dateTemp = true;
+  } else {
+    dateTemp = false;
+  }
+  console.log(
+    Number(godina),
+    date[2],
+    Number(mesec),
+    date[1],
+    Number(dan),
+    date[0]
+  );
 
   try {
     const apointment = await Apointment.find({
       date,
       doctorId,
     });
-    let temp = false;
+
     let vremePoslatogZahteva = req.body.timings[0] * 60 + req.body.timings[1];
     let DokotorStartTime =
       req.body.doctorTimings[0][0] * 60 + req.body.doctorTimings[0][1];
@@ -285,9 +310,8 @@ router.post("/check-availability", authMiddlewea, async (req, res) => {
     ) {
       checkDoctorTime = true;
     }
-    console.log(apointment);
+
     if (apointment.length === 0) {
-      console.log("usao");
       if (checkDoctorTime) {
         temp = true;
       }
@@ -305,21 +329,7 @@ router.post("/check-availability", authMiddlewea, async (req, res) => {
       });
     }
 
-    // if (apointment.length === 0 && checkDoctorTime) {
-    //   temp === true;
-    // } else {
-    //   if (
-    //     (vremePoslatogZahteva - 30 >= vremeZahtevaKojiSeObradjuje ||
-    //       vremePoslatogZahteva + 30 <= vremeZahtevaKojiSeObradjuje) &&
-    //
-    //   ) {
-    //     temp = true;
-    //   } else {
-    //     temp = false;
-    //   }
-    // }
-
-    if (temp === true) {
+    if (temp === true && dateTemp === true) {
       return res.status(200).send({
         message: "Termin je slobodan",
         success: true,
@@ -338,6 +348,29 @@ router.post("/check-availability", authMiddlewea, async (req, res) => {
   }
 });
 
+router.post("/get-doctor-apointments", authMiddlewea, async (req, res) => {
+  try {
+    console.log(req.body);
+    const apointment = await Apointment.find({ doctorId: req.body.id });
+    console.log(apointment);
+    if (!apointment) {
+      return res
+        .status(200)
+        .send({ massage: "Ne postoji ni jeda termin", success: false });
+    } else {
+      res.status(200).send({
+        success: true,
+        data: apointment,
+      });
+    }
+  } catch (error) {
+    return res.status(500).send({
+      massage: `Greska pri pribavljanju  informacija o terminima `,
+      success: false,
+      error,
+    });
+  }
+});
 router.post("/get-apointments", authMiddlewea, async (req, res) => {
   try {
     console.log(req.body);
