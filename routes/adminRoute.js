@@ -359,6 +359,7 @@ router.post("/create-new-doctor", authMiddlewea, async (req, res) => {
         email: req.body.email,
         password: req.body.password,
         isDoctor: true,
+        verified: true,
       };
       const newUser = new User(userBody);
       await newUser.save();
