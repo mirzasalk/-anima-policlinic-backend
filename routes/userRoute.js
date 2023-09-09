@@ -37,19 +37,23 @@ router.post("/register", async (req, res) => {
 
       const newUser = new User(req.body);
       await newUser.save();
-      console.log("mirza");
       const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, {
         expiresIn: "1h",
         algorithm: "HS256",
       });
+      console.log("1");
+
       const encodedToken = base64UrlEncode(token);
+      console.log("2");
       const url = `${process.env.BASE_URL}/user/${newUser._id}/verify/${encodedToken}`;
+      console.log("3");
       const msg = {
         to: newUser.email,
         from: "animapoliklinika@gmail.com",
         subject: "Link za verifikaciju",
         html: `<p>Kliknite na sledeći link kako biste se verifikovali: <a href=${url}>Verifikujte se</a></p>`,
       };
+      console.log("4");
 
       sgMail
         .send(msg)
@@ -59,7 +63,8 @@ router.post("/register", async (req, res) => {
         .catch((error) => {
           console.error("Došlo je do greške prilikom slanja e-pošte", error);
         });
-      // await sendEmail(newUser.email, "Verify Email", url);
+
+      console.log("5");
 
       res.status(200).send({
         massage: "Nalog je uspesno kreiran",
