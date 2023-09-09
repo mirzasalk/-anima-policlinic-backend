@@ -10,6 +10,11 @@ const jwt = require("jsonwebtoken");
 const authMiddlewea = require("../midlewares/authMiddleweare");
 const { cloudinary } = require("../utils/cloudinary");
 const sendEmail = require("../utils/sendEmail");
+const sgMail = require("@sendgrid/mail");
+
+sgMail.setApiKey(
+  "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"
+);
 
 router.post("/register", async (req, res) => {
   function base64UrlEncode(str) {
@@ -32,14 +37,29 @@ router.post("/register", async (req, res) => {
 
       const newUser = new User(req.body);
       await newUser.save();
+      console.log("mirza");
       const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, {
         expiresIn: "1h",
         algorithm: "HS256",
       });
       const encodedToken = base64UrlEncode(token);
       const url = `${process.env.BASE_URL}/user/${newUser._id}/verify/${encodedToken}`;
+      const msg = {
+        to: newUser.email,
+        from: "animapoliklinika@gmail.com",
+        subject: "Link za verifikaciju",
+        html: `<p>Kliknite na sledeći link kako biste se verifikovali: <a href=${url}>Verifikujte se</a></p>`,
+      };
 
-      await sendEmail(newUser.email, "Verify Email", url);
+      sgMail
+        .send(msg)
+        .then(() => {
+          console.log("E-pošta je uspešno poslata");
+        })
+        .catch((error) => {
+          console.error("Došlo je do greške prilikom slanja e-pošte", error);
+        });
+      // await sendEmail(newUser.email, "Verify Email", url);
 
       res.status(200).send({
         massage: "Nalog je uspesno kreiran",
