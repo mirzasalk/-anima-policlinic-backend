@@ -38,7 +38,7 @@ router.post("/register", async (req, res) => {
       // });
       // const encodedToken = base64UrlEncode(token);
       console.log("ovde");
-      const url = `${process.env.BASE_URL}/user/${newUser._id}/verify`;
+      const url = `${process.env.BASE_URL}user/${newUser._id}/verify`;
       console.log("2");
       await sendEmail(newUser.email, "Verify Email", url);
       console.log("3");
@@ -442,7 +442,7 @@ router.get("/get-therapies-gor-unsigned-user", async (req, res) => {
 
 router.get("/:id/verify", async (req, res) => {
   let valid = true;
-  console.log(user);
+
   console.log(req.params.id);
   // function base64UrlDecode(base64Url) {
   //   let base64 = base64Url.replace("-", "+").replace("_", "/");
@@ -453,7 +453,7 @@ router.get("/:id/verify", async (req, res) => {
 
   //   return atob(base64); // Dekodiranje Base64
   // }
-
+  console.log(req.params.id);
   const user = await User.findOne({ _id: req.params.id });
 
   if (!user) {
