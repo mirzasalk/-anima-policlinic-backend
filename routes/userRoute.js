@@ -10,18 +10,13 @@ const jwt = require("jsonwebtoken");
 const authMiddlewea = require("../midlewares/authMiddleweare");
 const { cloudinary } = require("../utils/cloudinary");
 const sendEmail = require("../utils/sendEmail");
-const sgMail = require("@sendgrid/mail");
-
-sgMail.setApiKey(
-  "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"
-);
 
 router.post("/register", async (req, res) => {
-  function base64UrlEncode(str) {
-    let base64 = btoa(str); // Kodiranje u Base64
-    base64 = base64.replace("+", "-").replace("/", "_").replace(/=+$/, ""); // Zamena znakova za URL kompatibilnost
-    return base64;
-  }
+  // function base64UrlEncode(str) {
+  //   let base64 = btoa(str); // Kodiranje u Base64
+  //   base64 = base64.replace("+", "-").replace("/", "_").replace(/=+$/, ""); // Zamena znakova za URL kompatibilnost
+  //   return base64;
+  // }
   try {
     const userExists = await User.findOne({ email: req.body.email });
     if (userExists) {
@@ -41,31 +36,12 @@ router.post("/register", async (req, res) => {
       //   expiresIn: "1h",
       //   algorithm: "HS256",
       // });
-      console.log("1");
-
       // const encodedToken = base64UrlEncode(token);
-      console.log("2");
+      console.log("ovde");
       const url = `${process.env.BASE_URL}/user/${newUser._id}/verify`;
+      console.log("2");
+      await sendEmail(newUser.email, "Verify Email", url);
       console.log("3");
-      const msg = {
-        to: newUser.email,
-        from: "animapoliklinika@gmail.com",
-        subject: "Link za verifikaciju",
-        html: `<p>Kliknite na sledeći link kako biste se verifikovali: <a href=${url}>Verifikujte se</a></p>`,
-      };
-      console.log("4");
-
-      sgMail
-        .send(msg)
-        .then(() => {
-          console.log("E-pošta je uspešno poslata");
-        })
-        .catch((error) => {
-          console.error("Došlo je do greške prilikom slanja e-pošte", error);
-        });
-
-      console.log("5");
-
       res.status(200).send({
         massage: "Nalog je uspesno kreiran",
         success: true,
@@ -466,6 +442,8 @@ router.get("/get-therapies-gor-unsigned-user", async (req, res) => {
 
 router.get("/:id/verify", async (req, res) => {
   let valid = true;
+  console.log(user);
+  console.log(req.params.id);
   // function base64UrlDecode(base64Url) {
   //   let base64 = base64Url.replace("-", "+").replace("_", "/");
 
