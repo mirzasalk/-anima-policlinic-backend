@@ -37,15 +37,15 @@ router.post("/register", async (req, res) => {
 
       const newUser = new User(req.body);
       await newUser.save();
-      const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, {
-        expiresIn: "1h",
-        algorithm: "HS256",
-      });
+      // const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, {
+      //   expiresIn: "1h",
+      //   algorithm: "HS256",
+      // });
       console.log("1");
 
-      const encodedToken = base64UrlEncode(token);
+      // const encodedToken = base64UrlEncode(token);
       console.log("2");
-      const url = `${process.env.BASE_URL}/user/${newUser._id}/verify/${encodedToken}`;
+      const url = `${process.env.BASE_URL}/user/${newUser._id}/verify`;
       console.log("3");
       const msg = {
         to: newUser.email,
@@ -464,17 +464,17 @@ router.get("/get-therapies-gor-unsigned-user", async (req, res) => {
   }
 });
 
-router.get("/:id/verify/:token", async (req, res) => {
+router.get("/:id/verify", async (req, res) => {
   let valid = true;
-  function base64UrlDecode(base64Url) {
-    let base64 = base64Url.replace("-", "+").replace("_", "/");
+  // function base64UrlDecode(base64Url) {
+  //   let base64 = base64Url.replace("-", "+").replace("_", "/");
 
-    while (base64.length % 4 !== 0) {
-      base64 += "=";
-    }
+  //   while (base64.length % 4 !== 0) {
+  //     base64 += "=";
+  //   }
 
-    return atob(base64); // Dekodiranje Base64
-  }
+  //   return atob(base64); // Dekodiranje Base64
+  // }
 
   const user = await User.findOne({ _id: req.params.id });
 
@@ -482,15 +482,15 @@ router.get("/:id/verify/:token", async (req, res) => {
     valid = false;
     console.log(valid);
   }
-  const token = req.params.token;
-  const base64Token = base64UrlDecode(token);
+  // const token = req.params.token;
+  // const base64Token = base64UrlDecode(token);
 
-  jwt.verify(base64Token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      valid = false;
-      console.log("nije validan token");
-    }
-  });
+  // jwt.verify(base64Token, process.env.JWT_SECRET, (err, decoded) => {
+  //   if (err) {
+  //     valid = false;
+  //     console.log("nije validan token");
+  //   }
+  // });
   if (!valid) {
     try {
       const deletedUser = await User.findByIdAndRemove({
